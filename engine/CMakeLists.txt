@@ -2,6 +2,8 @@
 set( SOURCES 
 	engine.cpp
 
+	dy_math.h
+	dy_math.cpp
 )
 
 
