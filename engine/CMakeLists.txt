@@ -1,9 +1,18 @@
 
 set( SOURCES 
-	engine.cpp
-
+	dy_engine.cpp
+	
 	dy_math.h
 	dy_math.cpp
+	
+	dy_shader.h
+	dy_shader.cpp
+	
+	dy_vertex.h
+	dy_vertex.cpp
+
+	dy_render.h
+	dy_render.cpp
 )
 
 

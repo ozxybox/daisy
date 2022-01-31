@@ -159,3 +159,52 @@ vec4 operator* (mat4 const& l, vec4 const& r) {
 
     return v;
 }
+
+
+
+const mat4 mat4::xrotation(float angle)
+{
+    return 
+    {{1.0f,        0.0f,         0.0f, 0.0f},
+     {0.0f, cosf(angle), -sinf(angle), 0.0f},
+     {0.0f, sinf(angle),  cosf(angle), 0.0f},
+     {0.0f,        0.0f,         0.0f, 1.0f}};
+}
+const mat4 mat4::yrotation(float angle)
+{
+    return
+    {{ cosf(angle), 0.0f, sinf(angle), 0.0f},
+     {        0.0f, 1.0f,        0.0f, 0.0f},
+     {-sinf(angle), 0.0f, cosf(angle), 0.0f},
+     {        0.0f, 0.0f,        0.0f, 1.0f}};
+}
+const mat4 mat4::zrotation(float angle)
+{
+    return
+    {{cosf(angle), -sinf(angle), 0.0f, 0.0f},
+     {sinf(angle),  cosf(angle), 0.0f, 0.0f},
+     {       0.0f,         0.0f, 1.0f, 0.0f},
+     {       0.0f,         0.0f, 0.0f, 1.0f} };
+}
+
+
+
+// Camera functions //
+void dy_perspective4x4(mat4* out, float fov, float near, float far, float aspect)
+{
+	float s = 1 / tan((fov / 2) * (DY_PI / 180));
+
+	*out = 
+	{{s * aspect, 0,                            0,  0},
+	 {         0, s,                            0,  0},
+	 {         0, 0,          -far / (far - near), -1},
+	 {         0, 0, -(far * near) / (far - near),  0}};
+}
+void dy_ortho4x4(mat4* out, float l, float r, float t, float b, float near, float far)
+{
+	*out = 
+	{{    2.0f / (r - l),                  0,                            0, 0},
+	 {                 0,     2.0f / (t - b),                            0, 0},
+	 {                 0,                  0,         -2.0f / (far - near), 0},
+	 {-(r + l) / (r - l), -(t + b) / (t - b), -(far + near) / (far - near), 1}};
+}

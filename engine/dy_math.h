@@ -1,6 +1,14 @@
 #pragma once
 
+
+#define DY_PI 3.14159265358979323846
+
+
 // Vectors
+struct vec2 {
+	float x, y;
+};
+
 struct vec3 {
 	float x, y, z;
 
@@ -39,8 +47,15 @@ struct mat4 {
 	vec4 a, b, c, d;
 
 	static const mat4 identity();
+	static const mat4 xrotation(float angle);
+	static const mat4 yrotation(float angle);
+	static const mat4 zrotation(float angle);
 };
 
 
 mat4 operator* (mat4 const& l, mat4 const& r);
 vec4 operator* (mat4 const& l, vec4 const& r);
+
+// Camera functions //
+void dy_perspective4x4(mat4* out, float fov, float near, float far, float aspect);
+void dy_ortho4x4(mat4* out, float l, float r, float t, float b, float near, float far);
