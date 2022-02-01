@@ -28,7 +28,7 @@ static const char* dy_painter_fragmentshader =
 "}";
 
 static GLFWwindow* s_window = 0;
-
+static bool s_firstwindow = false;
 dy_vbo vbo;
 dy_ibo ibo;
 dy_shader* shader;
@@ -72,7 +72,8 @@ static dy_vertex s_cube[] =
 	{{  1,  0,  1}, {1,0,0}, {0,0}},
 };
 
-int engine_init()
+
+int dy_engine_init()
 {
 	if (!glfwInit())
 		return 1;
@@ -81,13 +82,18 @@ int engine_init()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
-	const int window_width = 640;
-	const int window_height = 480;
+	// Create an invisible window
+	// Attach a context
+	// use it to create frame buffers
+	// render framebuffers to other windows
+	// still need to make a quad or tri for drawing the fbo to each screen!
+	// glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	s_firstwindow = false;
+	return 0;
+}
 
-	s_window = glfwCreateWindow(640, 480, "Window Title", NULL, NULL);
-	glfwMakeContextCurrent(s_window);
-	if (!s_window)
-		return 1;
+int dy_engine_glinit()
+{
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 		return 1;
@@ -119,20 +125,22 @@ int engine_init()
 	return 0;
 }
 
-void engine_shutdown()
+void dy_engine_shutdown()
 {
 	glfwTerminate();
 }
 
 
-int engine_living()
+int dy_engine_living(dy_window* window)
 {
-	return !glfwWindowShouldClose(s_window);
+	return !glfwWindowShouldClose((GLFWwindow*)window);
 }
-void engine_frame_pump()
+void dy_engine_event_pump()
 {
 	glfwPollEvents();
-
+}
+void dy_engine_frame()
+{
 	int width = 0, height = 0;
 	glfwGetWindowSize(s_window, &width, &height);
 
@@ -141,9 +149,9 @@ void engine_frame_pump()
 	mat4 model = mat4::yrotation(glfwGetTime()) * mat4::xrotation(0.7 * glfwGetTime());
 	mat4 view  = mat4::identity();
 	mat4 proj;
+	dy_perspective4x4(&proj, 45, 0.1, 100, height / (float)width);
 	view.d = {0,0,-8,1};
 	//dy_ortho4x4(&proj, 0, width, 0, height, -100, 100);
-	dy_perspective4x4(&proj, 45, 0.1, 100, height / (float)width);
 
 	dy_shader_set(DY_SHADERPARAM_MODEL, &model);
 	dy_shader_set(DY_SHADERPARAM_VIEW, &view);
@@ -156,4 +164,36 @@ void engine_frame_pump()
 	dy_render_draw_mesh(vbo, ibo, 0, 36);
 
 	glfwSwapBuffers(s_window);
+}
+
+
+
+dy_window* dy_engine_new_window()
+{
+	const int window_width = 640;
+	const int window_height = 480;
+
+	GLFWwindow* wnd = glfwCreateWindow(640, 480, "Window Title", NULL, NULL);
+
+	if (!s_firstwindow)
+	{
+		dy_engine_set_window(wnd);
+		dy_engine_glinit();
+		s_firstwindow = true;
+	}
+
+	return (dy_window*)wnd;
+}
+void dy_engine_set_window(dy_window* window)
+{
+	s_window = (GLFWwindow*)window;
+	glfwMakeContextCurrent(s_window);
+}
+
+#define GLFW_EXPOSE_NATIVE_WIN32 1
+#include <GLFW/glfw3native.h>
+
+void* dy_engine_hwnd(dy_window* window)
+{
+	return glfwGetWin32Window((GLFWwindow*)window);
 }
