@@ -10,9 +10,12 @@ set( SOURCES
 	
 	dy_vertex.h
 	dy_vertex.cpp
-
+	
 	dy_render.h
 	dy_render.cpp
+
+	dy_texture.h
+	dy_texture.cpp
 )
 
 

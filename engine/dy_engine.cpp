@@ -1,8 +1,11 @@
 #include "dy_engine.h"
 #include "dy_render.h"
 #include "dy_shader.h"
+#include "dy_texture.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stdlib.h>
+#include <math.h>
 
 static const char* dy_painter_vertexshader =
 "#version 330 core\n"
@@ -13,63 +16,83 @@ static const char* dy_painter_vertexshader =
 "uniform mat4 u_view;"
 "uniform mat4 u_projection;"
 "out vec3 v_color;"
-"out vec4 v_worldpos;"
+"out vec2 v_uv;"
 "void main(){"
 "    v_color=a_color;"
+"    v_uv=a_uv;"
 "    gl_Position = u_projection * u_view * u_model * vec4(a_pos.xyz, 1.0);"
 "}";
 static const char* dy_painter_fragmentshader =
 "#version 330 core\n"
 "precision lowp float;"
 "in vec3 v_color;"
+"in vec2 v_uv;"
 "out vec4 o_fragColor;"
+"uniform sampler2D u_tex;"
 "void main() {"
-"    o_fragColor = vec4(v_color.xyz, 1.0);"
+"    o_fragColor = vec4(v_color.xyz, 1.0) * vec4(texture(u_tex,v_uv).xyz, 1.0);"
 "}";
 
-static GLFWwindow* s_window = 0;
-static bool s_firstwindow = false;
-dy_vbo vbo;
-dy_ibo ibo;
+
+struct dy_window_data
+{
+	GLFWwindow* window;
+
+	dy_vbo screenvbo;
+	dy_ibo screenibo;
+};
+
+// Render window
+static dy_framebuffer* s_offscreen_framebuffer;
+static GLFWwindow* s_hidden_window = 0;
+
+// Current window
+static dy_window_data* s_window = 0;
+
+static dy_texture* s_whitetexture = 0;
+
+dy_vbo s_cube_vbo;
+dy_ibo s_cube_ibo;
 dy_shader* shader;
+
 
 static dy_vertex s_cube[] =
 {
 	// Back
 	{{  0,  1,  0}, {1,1,0}, {0,0}},
-	{{  1,  1,  0}, {1,1,0}, {0,0}},
-	{{  1,  0,  0}, {1,1,0}, {0,0}},
-	{{  0,  0,  0}, {1,1,0}, {0,0}},
+	{{  1,  1,  0}, {1,1,0}, {1,0}},
+	{{  1,  0,  0}, {1,1,0}, {1,1}},
+	{{  0,  0,  0}, {1,1,0}, {0,1}},
 
 	// Front
 	{{  0,  0,  1}, {0,0,1}, {0,0}},
-	{{  1,  0,  1}, {0,0,1}, {0,0}},
-	{{  1,  1,  1}, {0,0,1}, {0,0}},
-	{{  0,  1,  1}, {0,0,1}, {0,0}},
+	{{  1,  0,  1}, {0,0,1}, {1,0}},
+	{{  1,  1,  1}, {0,0,1}, {1,1}},
+	{{  0,  1,  1}, {0,0,1}, {0,1}},
 
 	// Bottom
 	{{  0,  0,  0}, {1,0,1}, {0,0}},
-	{{  1,  0,  0}, {1,0,1}, {0,0}},
-	{{  1,  0,  1}, {1,0,1}, {0,0}},
-	{{  0,  0,  1}, {1,0,1}, {0,0}},
+	{{  1,  0,  0}, {1,0,1}, {1,0}},
+	{{  1,  0,  1}, {1,0,1}, {1,1}},
+	{{  0,  0,  1}, {1,0,1}, {0,1}},
 
 	// Top
 	{{  0,  1,  1}, {0,1,0}, {0,0}},
-	{{  1,  1,  1}, {0,1,0}, {0,0}},
-	{{  1,  1,  0}, {0,1,0}, {0,0}},
-	{{  0,  1,  0}, {0,1,0}, {0,0}},
+	{{  1,  1,  1}, {0,1,0}, {1,0}},
+	{{  1,  1,  0}, {0,1,0}, {1,1}},
+	{{  0,  1,  0}, {0,1,0}, {0,1}},
 
 	// Left
 	{{  0,  0,  1}, {0,1,1}, {0,0}},
-	{{  0,  1,  1}, {0,1,1}, {0,0}},
-	{{  0,  1,  0}, {0,1,1}, {0,0}},
-	{{  0,  0,  0}, {0,1,1}, {0,0}},
+	{{  0,  1,  1}, {0,1,1}, {1,0}},
+	{{  0,  1,  0}, {0,1,1}, {1,1}},
+	{{  0,  0,  0}, {0,1,1}, {0,1}},
 
 	// Right
 	{{  1,  0,  0}, {1,0,0}, {0,0}},
-	{{  1,  1,  0}, {1,0,0}, {0,0}},
-	{{  1,  1,  1}, {1,0,0}, {0,0}},
-	{{  1,  0,  1}, {1,0,0}, {0,0}},
+	{{  1,  1,  0}, {1,0,0}, {1,0}},
+	{{  1,  1,  1}, {1,0,0}, {1,1}},
+	{{  1,  0,  1}, {1,0,0}, {0,1}},
 };
 
 
@@ -78,52 +101,67 @@ int dy_engine_init()
 	if (!glfwInit())
 		return 1;
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
 	// Create an invisible window
 	// Attach a context
 	// use it to create frame buffers
 	// render framebuffers to other windows
 	// still need to make a quad or tri for drawing the fbo to each screen!
-	// glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-	s_firstwindow = false;
-	return 0;
-}
 
-int dy_engine_glinit()
-{
+	const int window_width = 640;
+	const int window_height = 480;
 
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	s_hidden_window = glfwCreateWindow(640, 480, "", NULL, NULL);
+	glfwMakeContextCurrent(s_hidden_window);
+	
+	// Enable it again so our future windows work
+	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+
+	// Initialize OpenGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 		return 1;
+	
+	// Create the offscreen framebuffer for rendering window content
+	dy_texture* color = dy_texture_create(DY_TEXTURE_FORMAT_RGB8, 0, 1024, 1024);
+	s_offscreen_framebuffer = dy_framebuffer_create(color, 1);
+
+	// Create a blank white texture for drawing textureless objects
+	unsigned int pixel = 0xFFFFFFFF;
+	s_whitetexture = dy_texture_create(DY_TEXTURE_FORMAT_BGRA8, (unsigned char*)&pixel, 1, 1);
+	
 
 	dy_shader_init();
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	
-
-	
-
-	dy_vtxbuf vb(24);
-	vb.push_many(&s_cube[0], 24);
-	
-	dy_idxbuf ib(36);
-	ib.push_quad(0);
-	ib.push_quad(4);
-	ib.push_quad(8);
-	ib.push_quad(12);
-	ib.push_quad(16);
-	ib.push_quad(20);
-
-	vbo = dy_render_create_vbo(&vb);
-	ibo = dy_render_create_ibo(&ib);
 
 	shader = dy_shader_create(dy_painter_vertexshader, dy_painter_fragmentshader);
 
+	// Cube Geo
+	{
+		dy_vtxbuf vb(24);
+		vb.push_many(&s_cube[0], 24);
+
+		dy_idxbuf ib(36);
+		ib.push_quad(0);
+		ib.push_quad(4);
+		ib.push_quad(8);
+		ib.push_quad(12);
+		ib.push_quad(16);
+		ib.push_quad(20);
+
+		s_cube_vbo = dy_render_create_vbo(&vb);
+		s_cube_ibo = dy_render_create_ibo(&ib);
+	}
+
+
 	return 0;
 }
+
 
 void dy_engine_shutdown()
 {
@@ -139,31 +177,86 @@ void dy_engine_event_pump()
 {
 	glfwPollEvents();
 }
-void dy_engine_frame()
+
+
+void dy_engine_render(float f)// int width, int height)
 {
+	// FIXME: AA
 	int width = 0, height = 0;
-	glfwGetWindowSize(s_window, &width, &height);
+	glfwGetWindowSize(s_window->window, &width, &height);
 
-	dy_render_setviewport(0, 0, width, height);
 
+	// Camera Matrices
 	mat4 model = mat4::yrotation(glfwGetTime()) * mat4::xrotation(0.7 * glfwGetTime());
-	mat4 view  = mat4::identity();
+	mat4 view = mat4::identity();
 	mat4 proj;
 	dy_perspective4x4(&proj, 45, 0.1, 100, height / (float)width);
-	view.d = {0,0,-8,1};
-	//dy_ortho4x4(&proj, 0, width, 0, height, -100, 100);
+	view.d = { 0,0,-8,1 };
 
 	dy_shader_set(DY_SHADERPARAM_MODEL, &model);
 	dy_shader_set(DY_SHADERPARAM_VIEW, &view);
 	dy_shader_set(DY_SHADERPARAM_PROJECTION, &proj);
 
-	glClearColor(1.0, 0.5, 0.5, 1.0);
+	// Clear Frame
+	//glClearColor(1.0, 0.5, 0.5, 1.0);
+	glClearColor(cos(f) * 0.5 + 0.5, sin(f) * 0.5 + 0.5, sin(cos(f)) * 0.5 + 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Draw mesh
 	dy_shader_bind(shader);
-	dy_render_draw_mesh(vbo, ibo, 0, 36);
+	dy_texture_bind(s_whitetexture);
+	dy_render_draw_mesh(s_cube_vbo, s_cube_ibo, 0, 36);
+}
 
-	glfwSwapBuffers(s_window);
+void dy_engine_frame_begin()
+{
+	// Switch to our rendering window
+	glfwMakeContextCurrent(s_hidden_window);
+
+	// Bind the offscreen framebuffer
+	dy_texture* fbtex = dy_framebuffer_color(s_offscreen_framebuffer);
+	dy_framebuffer_bind(s_offscreen_framebuffer);
+	unsigned int fbtexwidth, fbtexheight;
+	dy_texture_get_dimensions(fbtex, &fbtexwidth, &fbtexheight);
+	dy_render_setviewport(0, 0, fbtexwidth, fbtexheight);
+
+	// Get the selected window size
+	int width = 0, height = 0;
+	glfwGetWindowSize(s_window->window, &width, &height);
+}
+
+
+void dy_engine_frame_end()
+{
+	// Frame is done. Let's push it to our target window
+	dy_framebuffer_unbind();
+
+	// FIXME: AA
+	int width = 0, height = 0;
+	glfwGetWindowSize(s_window->window, &width, &height);
+
+	// Switch back to our selected window
+	glfwMakeContextCurrent(s_window->window);
+
+	// Setup the camera to fullscreen the FBO
+	dy_render_setviewport(0, 0, width, height);
+	mat4 eye = mat4::identity();
+	mat4 proj;
+	dy_ortho4x4(&proj, 0, 1, 0, 1, -10, 10);
+	dy_shader_set(DY_SHADERPARAM_MODEL, &eye);
+	dy_shader_set(DY_SHADERPARAM_VIEW, &eye);
+	dy_shader_set(DY_SHADERPARAM_PROJECTION, &proj);
+
+	// Clear the frame's color. We don't have depth since everything's flat now
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// Draw the screen quad with the fbo bound
+	dy_shader_bind(shader);
+	dy_texture_bind(dy_framebuffer_color(s_offscreen_framebuffer));
+	dy_render_draw_mesh(s_window->screenvbo, s_window->screenibo, 0, 6);
+
+	// Push the frame
+	glfwSwapBuffers(s_window->window);
 }
 
 
@@ -173,21 +266,42 @@ dy_window* dy_engine_new_window()
 	const int window_width = 640;
 	const int window_height = 480;
 
-	GLFWwindow* wnd = glfwCreateWindow(640, 480, "Window Title", NULL, NULL);
+	// Create the glfw window
+	GLFWwindow* wnd = glfwCreateWindow(window_width, window_height, "Window Title", NULL, s_hidden_window);
+	glfwMakeContextCurrent(wnd);
 
-	if (!s_firstwindow)
+	
+	// Create a screen object to render our framebuffer to 
+	static dy_vertex s_quad[] =
 	{
-		dy_engine_set_window(wnd);
-		dy_engine_glinit();
-		s_firstwindow = true;
-	}
+		{{  0,  0,  0}, {1,1,1}, {0,0}},
+		{{  1,  0,  0}, {1,1,1}, {1,0}},
+		{{  1,  1,  0}, {1,1,1}, {1,1}},
+		{{  0,  1,  0}, {1,1,1}, {0,1}},
+	};
+	dy_vtxbuf vb(4);
+	vb.push_many(&s_quad[0], 4);
 
-	return (dy_window*)wnd;
+	dy_idxbuf ib(6);
+	ib.push_quad(0);
+
+	dy_vbo vbo = dy_render_create_vbo(&vb);
+	dy_ibo ibo = dy_render_create_ibo(&ib);
+
+
+	// Record all the data and return it 
+	dy_window_data* data = (dy_window_data*)malloc(sizeof(dy_window_data));
+	data->window = wnd;
+	data->screenvbo = vbo;
+	data->screenibo = ibo;
+
+	return (dy_window*)data;
 }
 void dy_engine_set_window(dy_window* window)
 {
-	s_window = (GLFWwindow*)window;
-	glfwMakeContextCurrent(s_window);
+	dy_window_data* data = (dy_window_data*)window;
+	s_window = data;
+
 }
 
 #define GLFW_EXPOSE_NATIVE_WIN32 1
@@ -195,5 +309,6 @@ void dy_engine_set_window(dy_window* window)
 
 void* dy_engine_hwnd(dy_window* window)
 {
-	return glfwGetWin32Window((GLFWwindow*)window);
+	dy_window_data* data = (dy_window_data*)window;
+	return glfwGetWin32Window(data->window);
 }
