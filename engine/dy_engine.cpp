@@ -118,8 +118,6 @@ int dy_engine_init()
 	s_hidden_window = glfwCreateWindow(640, 480, "", NULL, NULL);
 	glfwMakeContextCurrent(s_hidden_window);
 	
-	// Enable it again so our future windows work
-	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 
 	// Initialize OpenGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -187,7 +185,8 @@ void dy_engine_render(float f)// int width, int height)
 
 
 	// Camera Matrices
-	mat4 model = mat4::yrotation(glfwGetTime()) * mat4::xrotation(0.7 * glfwGetTime());
+	float time = glfwGetTime() + f;
+	mat4 model = mat4::yrotation(time) * mat4::xrotation(0.7 * time);
 	mat4 view = mat4::identity();
 	mat4 proj;
 	dy_perspective4x4(&proj, 45, 0.1, 100, height / (float)width);
@@ -247,15 +246,12 @@ void dy_engine_frame_end()
 	dy_shader_set(DY_SHADERPARAM_VIEW, &eye);
 	dy_shader_set(DY_SHADERPARAM_PROJECTION, &proj);
 
-	// Clear the frame's color. We don't have depth since everything's flat now
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	// Draw the screen quad with the fbo bound
 	dy_shader_bind(shader);
 	dy_texture_bind(dy_framebuffer_color(s_offscreen_framebuffer));
 	dy_render_draw_mesh(s_window->screenvbo, s_window->screenibo, 0, 6);
 
-	// Push the frame
+	// Push the frame to the selected window
 	glfwSwapBuffers(s_window->window);
 }
 
@@ -297,11 +293,17 @@ dy_window* dy_engine_new_window()
 
 	return (dy_window*)data;
 }
-void dy_engine_set_window(dy_window* window)
+
+void dy_engine_window_select(dy_window* window)
 {
 	dy_window_data* data = (dy_window_data*)window;
 	s_window = data;
+}
 
+void dy_engine_window_show(dy_window* window)
+{
+	dy_window_data* data = (dy_window_data*)window;
+	glfwShowWindow(data->window);
 }
 
 #define GLFW_EXPOSE_NATIVE_WIN32 1
