@@ -192,7 +192,7 @@ const mat4 mat4::zrotation(float angle)
 // Camera functions //
 void dy_perspective4x4(mat4* out, float fov, float near, float far, float aspect)
 {
-	float s = 1 / tan((fov / 2) * (DY_PI / 180));
+	float s = 1.0f / tanf((fov / 2) * (DY_PI / 180));
 
 	*out = 
 	{{s * aspect, 0,                            0,  0},

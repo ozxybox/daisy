@@ -22,6 +22,7 @@ set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory( thirdparty/glad )
 add_subdirectory( thirdparty/glfw )
 
-
+add_subdirectory( dy_math )
+add_subdirectory( dy_csg )
 add_subdirectory( engine )
 add_subdirectory( launcher )
