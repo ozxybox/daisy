@@ -189,10 +189,9 @@ void dy_idxbuf::push_convexpoly(unsigned short start, unsigned short count)
     int idxCount = (count - 2) * 3;
 
     unsigned short* bf = buf + used;
-    unsigned int off = used;
     used += idxCount;
 
-    for (unsigned int i = 1; i < idxCount - 1; i++)
+    for (unsigned int i = 1; i < count - 1; i++)
     {
         bf[0] = start;
         bf[1] = start + i;

@@ -24,5 +24,5 @@ add_subdirectory( thirdparty/glfw )
 
 add_subdirectory( dy_util )
 add_subdirectory( dy_csg )
-add_subdirectory( engine )
+add_subdirectory( dy_engine )
 add_subdirectory( launcher )

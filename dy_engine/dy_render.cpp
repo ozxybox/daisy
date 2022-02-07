@@ -1,6 +1,7 @@
 #include "dy_render.h"
 #include <glad/glad.h>
 #include <stddef.h>
+#include <assert.h>
 
 void dy_render_setviewport(int x, int y, int w, int h)
 {
@@ -98,6 +99,9 @@ void dy_render_fill_ibo_dynamic(dy_ibo ibo, dy_idxbuf* buf)
 
 void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned int count)
 {
+	
+	assert(glGetError() == 0);
+
 	glBindVertexArray(vbo.vao);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo.vbo);
 
@@ -137,4 +141,12 @@ void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned in
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+
+	assert(glGetError() == 0);
+
+
 }

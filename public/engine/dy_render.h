@@ -24,7 +24,7 @@ void dy_render_destroy_ibo(dy_ibo ibo);
 
 // Static vbo & ibo
 dy_vbo dy_render_create_vbo(dy_vtxbuf* buf);
-dy_ibo dy_render_create_ibo(dy_idxbuf* buf);
+dy_ibo dy_render_create_ibo(dy_idxbuf* buf); // ONLY CALL AFTER CREATING A VBO!
 
 // Dynamic vbo & ibo
 dy_ibo dy_render_create_ibo_dynamic(dy_idxbuf* buf);

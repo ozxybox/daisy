@@ -201,6 +201,8 @@ void dy_shader_bind(dy_shader* shader)
     dy_shader_current = data;
 
     glUseProgram(data->program);
+    assert(glGetError() == 0);
+
     dy_apply_all_parameters_();
 }
 void dy_shader_set(int parameter, void* data)
