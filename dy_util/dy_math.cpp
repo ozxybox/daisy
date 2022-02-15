@@ -1,5 +1,7 @@
 #include "dy_math.h"
 #include <math.h>
+#include <assert.h>
+#include <float.h>
 
 // Vector 3
 vec3 vec3::cross(vec3 const& r) {
@@ -141,7 +143,7 @@ const mat3 mat3::identity()
      {0, 0, 1} };
 }
 
-float mat3::det()
+float mat3::det() const
 {
     return
     + a.x * (b.y * c.z - b.z * c.y)
@@ -149,31 +151,125 @@ float mat3::det()
     + c.x * (a.y * b.z - a.z * b.y);
 }
 
-bool mat3::solve(vec3 b, vec3* out)
+bool mat3::solve(vec3 b, vec3* out) const
 {
-    mat3 t;
-    vec3 x;
-    float d = det();
-    if (d == 0) return false;
+    return mat3::solve(*this, b, out);
+}
 
-    t = *this;
-    t.a = b;
-    x.x = t.det() / d;
+bool mat3::solve(mat3 const& A, vec3 const& b, vec3* out)
+{
+    // Transpose from column major to row major and augment in b
+    float omat[3][4] =
+    {{A.a.x, A.b.x, A.c.x, b.x},
+     {A.a.y, A.b.y, A.c.y, b.y},
+     {A.a.z, A.b.z, A.c.z, b.z}};
     
-    t = *this;
-    t.b = b;
-    x.y = t.det() / d;
+    // Keep the matrix as pointers so we can swap rows quickly without damaging our augment in omat
+    float* mat[3] =
+    {&omat[0][0],
+     &omat[1][0],
+     &omat[2][0]};
 
-    t = *this;
-    t.c = b;
-    x.z = t.det() / d;
+    // Get it into row echelon form
+    for (int n = 0; n < 2; n++)
+    {
+        // Find pivots
+        float largest = 0;
+        float la = 0;
+        int pivrow = -1;
+        for (int m = n; m < 3; m++)
+        {
+            float v = mat[m][n];
+            float va = fabsf(v);
 
-    *out = x;
+            if (va > la)
+            {
+                pivrow = m;
+                largest = v;
+                la = va;
+            }
+        }
+
+        // No pivot? No solution!
+        if (pivrow == -1)
+            return false;
+
+        // Swap pivot to highest
+        float* pivot = mat[pivrow];
+        mat[pivrow] = mat[n];
+        mat[n] = pivot;
+
+        vec4* pivotv = reinterpret_cast<vec4*>(pivot);
+
+        // Apply our pivot row to the rows below 
+        for (int m = n + 1; m < 3; m++)
+        {
+            // Get the multiplier
+            float* row = mat[m];
+            float v = -row[n] / pivot[n];
+            
+            vec4* rowv = reinterpret_cast<vec4*>(row);
+            *rowv += *pivotv * v;
+        }
+    }
+
+    // Get it into reduced row echelon form
+    for (int n = 2; n; n--)
+    {
+        for (int m = n - 1; m >= 0; m--)
+        {
+
+            float* pivot = mat[n];
+            vec4* pivotv = reinterpret_cast<vec4*>(pivot);
+
+            // Get the multiplier
+            float* row = mat[m];
+            float v = -row[n] / pivot[n];
+
+            // Push that pivot up
+            vec4* rowv = reinterpret_cast<vec4*>(row);
+            *rowv += *pivotv * v;
+        }
+    }
+
+    // Clean up our diagonal
+    for (int n = 0; n < 3; n++)
+    {
+        float* rowf = mat[n];
+        vec4* row = reinterpret_cast<vec4*>(rowf);
+
+        float v = rowf[n];
+
+        
+        // Check for zeros along the diagonal
+        if (fabsf(v) <= FLT_EPSILON)
+            return false;
+
+        *row /= v;
+    }
+
+    // Hoist the augment back off omat
+    vec3 v = {mat[0][3], mat[1][3], mat[2][3] };
+    *out = v;
     return true;
 }
 
-mat3 operator* (mat3 const& l, mat3 const& r);
-vec3 operator* (mat3 const& l, vec3 const& r);
+mat3 operator* (mat3 const& l, mat3 const& r)
+{
+    assert(0);
+    return {};
+}
+vec3 operator* (mat3 const& l, vec3 const& r)
+{
+    // Unrolled
+    vec3 v;
+    v  = l.a * r.x;
+    v += l.b * r.y;
+    v += l.c * r.z;
+    
+
+    return v;
+}
 
 const mat4 mat4::identity() {
     return 

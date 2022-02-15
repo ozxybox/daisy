@@ -59,12 +59,13 @@ vec4& operator/= (vec4& l, float const  r);
 struct mat3 {
 	vec3 a, b, c;
 
-	float det();
+	float det() const;
 	
 	// Ax=b
 	// Returns true if it can solve for x
-	bool solve(vec3 b, vec3* out);
+	bool solve(vec3 b, vec3* out) const;
 
+	static bool solve(mat3 const& A, vec3 const& b, vec3* out);
 	static const mat3 identity();
 };
 mat3 operator* (mat3 const& l, mat3 const& r);

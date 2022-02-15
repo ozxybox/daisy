@@ -10,6 +10,8 @@ endif()
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/out )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/out )
 
+enable_testing()
+
 project( Daisy )
 
 # Configure GLFW

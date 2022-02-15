@@ -14,3 +14,10 @@ set( SOURCES
 add_library( dy_util ${SOURCES} )
 target_include_directories( dy_util PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${DY_ALL_PUBLIC} )
 target_include_directories( dy_util PUBLIC ${DY_PUBLIC} )
+
+
+add_executable( test_dy_util test_dy_util.cpp )
+target_link_libraries( test_dy_util dy_util )
+
+add_test(NAME test_dy_ustack COMMAND test_dy_util 0)
+add_test(NAME test_dy_mat3_solve COMMAND test_dy_util 1)
