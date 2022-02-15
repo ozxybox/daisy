@@ -16,3 +16,6 @@ void dy_engine_window_size(int* w, int* h); // dimensions of the current selecte
 void dy_engine_window_select(dy_window* window);
 void dy_engine_window_show(dy_window* window);
 void* dy_engine_hwnd(dy_window* window);
+
+int dy_engine_key_down(int key);
+void dy_engine_mouse_pos(double* mx, double* my);

@@ -108,13 +108,14 @@ void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned in
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(
-		0,                              // position 0
-		3,                              // three floats
-		GL_FLOAT,                       // elements are floats
-		GL_FALSE,                       //
-		sizeof(dy_vertex),              // stride
-		(void*)offsetof(dy_vertex, pos) // position within stride
+		0,                                // position 0
+		3,                                // three floats
+		GL_FLOAT,                         // elements are floats
+		GL_FALSE,                         //
+		sizeof(dy_vertex),                // stride
+		(void*)offsetof(dy_vertex, pos)   // position within stride
 	);
 	glVertexAttribPointer(
 		1,                                // position 1
@@ -125,14 +126,21 @@ void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned in
 		(void*)offsetof(dy_vertex, color) // position within stride
 	);
 	glVertexAttribPointer(
-		2,                             // position 2
-		2,                             // two floats
-		GL_FLOAT,                      // elements are floats
-		GL_FALSE,                      //
-		sizeof(dy_vertex),             // stride
-		(void*)offsetof(dy_vertex, uv) // position within stride
+		2,                                // position 2
+		2,                                // two floats
+		GL_FLOAT,                         // elements are floats
+		GL_FALSE,                         //
+		sizeof(dy_vertex),                // stride
+		(void*)offsetof(dy_vertex, uv)    // position within stride
 	);
-
+	glVertexAttribPointer(
+		3,                                // position 3
+		3,                                // three floats
+		GL_FLOAT,                         // elements are floats
+		GL_FALSE,                         //
+		sizeof(dy_vertex),                // stride
+		(void*)offsetof(dy_vertex, norm)  // position within stride
+	);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.ibo);
 	glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*)(start * sizeof(unsigned short)));
@@ -141,6 +149,7 @@ void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned in
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

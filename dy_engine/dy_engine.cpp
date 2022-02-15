@@ -68,7 +68,7 @@ int dy_engine_init()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-	s_hidden_window = glfwCreateWindow(640, 480, "", NULL, NULL);
+	s_hidden_window = glfwCreateWindow(window_width, window_height, "", NULL, NULL);
 	glfwMakeContextCurrent(s_hidden_window);
 	
 
@@ -77,7 +77,7 @@ int dy_engine_init()
 		return 1;
 	
 	// Create the offscreen framebuffer for rendering window content
-	dy_texture* color = dy_texture_create(DY_TEXTURE_FORMAT_RGB32F, 0, 1024, 1024);
+	dy_texture* color = dy_texture_create(DY_TEXTURE_FORMAT_RGB32F, 0, 2048, 2048);
 	s_offscreen_framebuffer = dy_framebuffer_create(color, 1);
 
 
@@ -144,7 +144,7 @@ void dy_engine_frame_end()
 	// Setup the camera to fullscreen the FBO
 	dy_render_setviewport(0, 0, width, height);
 	mat4 proj;
-	dy_ortho4x4(&proj, 0, 1, 0, 1, -10, 10);
+	dy_ortho4x4(&proj, 0, 1, 1, 0, -10, 10);
 	dy_shader_set(DY_SHADERPARAM_PROJECTION, &proj);
 
 	
@@ -163,8 +163,8 @@ void dy_engine_frame_end()
 
 dy_window* dy_engine_new_window()
 {
-	const int window_width = 640;
-	const int window_height = 480;
+	const int window_width = 640*2;
+	const int window_height = 480*1.5;
 
 	// Create the glfw window
 	GLFWwindow* wnd = glfwCreateWindow(window_width, window_height, "Window Title", NULL, s_hidden_window);
@@ -216,6 +216,15 @@ void dy_engine_window_show(dy_window* window)
 {
 	dy_window_data* data = (dy_window_data*)window;
 	glfwShowWindow(data->window);
+}
+
+int dy_engine_key_down(int key)
+{
+	return glfwGetKey(s_window->window, key) == GLFW_PRESS;
+}
+void dy_engine_mouse_pos(double* mx, double* my)
+{
+	glfwGetCursorPos(s_window->window, mx, my);
 }
 
 #define GLFW_EXPOSE_NATIVE_WIN32 1

@@ -8,6 +8,7 @@ typedef struct dy_vertex
 	vec3 pos;
 	vec3 color;
 	vec2 uv;
+    vec3 norm;
 } dy_vertex;
 
 
