@@ -1,3 +1,9 @@
 [submodule "thirdparty/glfw"]
 	path = thirdparty/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "thirdparty/x9p"]
+	path = thirdparty/x9p
+	url = https://github.com/ozxybox/x9p.git
+[submodule "thirdparty/keyvalues"]
+	path = thirdparty/keyvalues
+	url = https://github.com/ozxybox/SpeedyKeyV.git

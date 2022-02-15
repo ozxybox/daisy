@@ -21,6 +21,8 @@ set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 # Thirdparty libraries
 add_subdirectory( thirdparty/glad )
 add_subdirectory( thirdparty/glfw )
+add_subdirectory( thirdparty/x9p )
+add_subdirectory( thirdparty/keyvalues )
 
 add_subdirectory( dy_util )
 add_subdirectory( dy_csg )
