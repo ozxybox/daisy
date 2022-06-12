@@ -5,8 +5,16 @@ set( DY_PUBLIC ${DY_ALL_PUBLIC}/asset )
 
 
 set( SOURCES 
-	${DY_PUBLIC}/dy_objimport.h
-	dy_objimport.cpp
+	${DY_PUBLIC}/dy_asset.h
+	dy_asset.cpp
+
+	dy_decode_obj.h
+	dy_decode_obj.cpp
+
+	
+	dy_asset_obj.h
+	dy_asset_obj.cpp
+	
 	dy_asset_png.cpp
 )
 

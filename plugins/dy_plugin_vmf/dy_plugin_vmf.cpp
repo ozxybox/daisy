@@ -8,125 +8,13 @@
 #include <string.h>
 #include <KeyValue.h>
 #include <assert.h>
-#include <XVirtualFileSystem.h>
 #include <socket/TCPSocket.h>
-#include <X9PServer.h>
+#include "dy_editsys.h"
 
+extern dy_netdb_tree s_tree;
 
-typedef XVFSTypePointerFile<dy_bplane> VMFPlaneFile;
-
-
-class VMFSolidPlanesDirectory : public XBaseVirtualFile
-{
-public:
-
-	VMFSolidPlanesDirectory(dy_bsolid* solid)
-		: m_solid(solid)
-	{
-
-		m_files = new direntry_t[m_solid->plane_count];
-		for (int i = 0; i < m_solid->plane_count; i++)
-		{
-			direntry_t* de = &m_files[i];
-			de->name = xstrfromd(i, 10);
-			de->parent = this;
-			de->node = new VMFPlaneFile(&m_solid->planes[i]);
-		}
-	}
-
-	virtual ftype_t  Type()       { return X9P_FT_DIRECTORY; }
-
-	// Directory Functions
-	virtual xerr_t AddChild(xstr_t name, XVirtualFile* file, direntry_t** out) { if (out) *out = 0; return "Not allowed to add more planes!"; };
-	virtual xerr_t RemoveChild(xstr_t name) { return "Not allowed to remove any planes!"; };
-	virtual uint32_t ChildCount() { return m_solid->plane_count; }
-	virtual xerr_t FindChild(xstr_t name, direntry_t** out)
-	{
-		int d = 0;
-		if (!xstrtod(name, &d) || d < 0) return "File does not exist!";
-		if (d >= m_solid->plane_count) return "Index out of range!";
-
-		if (out)
-			*out = &m_files[d];
-
-		return 0;
-	}
-	virtual xerr_t GetChild(uint32_t index, direntry_t** out)
-	{
-		if (index >= ChildCount())
-		{
-			if (out) *out = 0;
-			return "Index out of range!";
-		}
-		
-		if(out) 
-			*out = &m_files[index];
-
-		return 0;
-	}
-
-private:
-	direntry_t* m_files;
-	dy_bsolid* m_solid;
-};
-
-
-class VMFSolidsDirectory : public XBaseVirtualFile
-{
-public:
-
-	VMFSolidsDirectory(dy_bsolid* solids, uint32_t solidcount)
-		: m_solids(solids), m_solidcount(solidcount)
-	{
-
-		m_files = new direntry_t[m_solidcount];
-		for (int i = 0; i < m_solidcount; i++)
-		{
-			direntry_t* de = &m_files[i];
-			de->name = xstrfromd(i, 10);
-			de->parent = this;
-			de->node = new VMFSolidPlanesDirectory(&m_solids[i]);
-		}
-	}
-
-	virtual ftype_t  Type()       { return X9P_FT_DIRECTORY; }
-
-	// Directory Functions
-	virtual xerr_t AddChild(xstr_t name, XVirtualFile* file, direntry_t** out) { if (out) *out = 0; return "Not allowed to add more planes!"; };
-	virtual xerr_t RemoveChild(xstr_t name) { return "Not allowed to remove any planes!"; };
-	virtual uint32_t ChildCount() { return m_solidcount; }
-	virtual xerr_t FindChild(xstr_t name, direntry_t** out)
-	{
-		int d = 0;
-		if (!xstrtod(name, &d) || d < 0) return "File does not exist!";
-		if (d >= m_solidcount) return "Index out of range!";
-
-		if (out)
-			*out = &m_files[d];
-
-		return 0;
-	}
-	virtual xerr_t GetChild(uint32_t index, direntry_t** out)
-	{
-		if (index >= ChildCount())
-		{
-			if (out) *out = 0;
-			return "Index out of range!";
-		}
-		
-		if(out) 
-			*out = &m_files[index];
-
-		return 0;
-	}
-
-private:
-	direntry_t* m_files;
-	dy_bsolid* m_solids;
-	uint32_t m_solidcount;
-};
-
-void add_ent_solids(dy_ustack<dy_bsolid>& solids, KeyValue& world)
+#define SKIP_MAT 1
+void add_ent_solids(KeyValue& world)
 {
 	
 	for (int i = 0; i < world.childCount; i++)
@@ -136,13 +24,31 @@ void add_ent_solids(dy_ustack<dy_bsolid>& solids, KeyValue& world)
 			continue;
 		//printf("Solid!\n");
 
+#if SKIP_MAT
+		bool skipit = false;
+#endif
 		dy_ustack<dy_bplane> sides;
 		for (int k = 0; k < solid.childCount; k++)
 		{
 			KeyValue& side = solid.Get(k);
+			if (side.key.string == 0)
+			{
+				puts("huh?");
+				continue;
+			}
 			if (strcmp("side", side.key.string) != 0)
 				continue;
 			//printf("Side!\n");
+
+#if SKIP_MAT
+			KeyValue& material = side.Get("material");
+			if (strcmp(material.value.string, "TOOLS/TOOLSSKIP") == 0 || strcmp(material.value.string, "TOOLS/TOOLSHINT") == 0)
+			{
+				skipit = true;
+				break;
+			}
+#endif
+
 
 			KeyValue& plane = side.Get("plane");
 
@@ -158,24 +64,28 @@ void add_ent_solids(dy_ustack<dy_bsolid>& solids, KeyValue& world)
 			sides.push({n, d});
 		}
 
-		dy_bsolid s;
-		s.planes = sides.packed();
-		s.plane_count = sides.count;
-		solids.push(&s);
+#if SKIP_MAT
+		if (skipit)
+			continue;
+#endif
+
+		if (sides.count <= 4)
+			continue;
+
+		dy_netdb_obj* sobj = s_tree.create(0, DY_NETDB_TYPE_SOLID, 0);
+
+		for (dy_bplane* plane : sides)
+		{
+			s_tree.create(sobj->id(), DY_NETDB_TYPE_PLANE, new dy_bplane(*plane));
+		}
 	}
+
+
 }
 
 int main(int argc, const char** args)
 {
-	SystemInitSocket();
-
-	XVirtualFileSystem vfs;
-
-	XVirtualFile* root = vfs.RootDirectory()->node;
-
 	const char* filename = args[1];// "sdk_dm_lockdown.vmf";
-
-
 
 	FILE* f = fopen(filename, "rb");
 	fseek(f, 0, SEEK_END);
@@ -190,10 +100,9 @@ int main(int argc, const char** args)
 	KeyValueRoot kv(m);
 	kv.Solidify();
 
-	dy_ustack<dy_bsolid> solids;
 
 	// Add in the world's geo
-	add_ent_solids(solids, kv["world"]);
+	add_ent_solids(kv["world"]);
 
 
 	// Add in all func_details
@@ -207,32 +116,17 @@ int main(int argc, const char** args)
 		if (classname.hasChildren || strcmp("func_detail", classname.value.string) != 0)
 			continue;
 
-		add_ent_solids(solids, ent);
+		add_ent_solids(ent);
 	}
 
-	for (dy_bsolid* solid : solids)
-	{
-		dy_rmesh mesh = dy_bsolid_mesh(solid);
 
-	}
+	s_tree.rebuild();
 
-	dy_bsolid* solidspacked = solids.packed();
+	printf("Hosting %u solids and %u planes!\n", s_tree.objectsForType(DY_NETDB_TYPE_SOLID).count, s_tree.objectsForType(DY_NETDB_TYPE_PLANE).count);
 
+	SystemInitSocket();
+	dy_editsys_begin_server("27015");
 
-	XVFSDirectory* folder = new XVFSDirectory;
-	VMFSolidsDirectory* solidDir = new VMFSolidsDirectory(solidspacked, solids.count);
-	root->AddChild(XSTR_L("world1.vmf"), solidDir, 0);
-
-	X9PServer sv;
-	sv.Begin(nullptr, "27015", &vfs);
-
-	printf("Begin!\n");
-
-	while (1)
-	{
-		sv.AcceptConnections();
-		sv.ProcessPackets();
-	}
 	return 0;
 }
 

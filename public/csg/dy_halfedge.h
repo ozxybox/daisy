@@ -1,5 +1,14 @@
 #pragma once
 #include "dy_math.h"
+#include "dy_netdb.h"
+
+struct dy_aabb
+{
+	vec3 mins;
+	vec3 maxs;
+
+	inline vec3 center() { return (mins + maxs) * 0.5; }
+};
 
 struct dy_rface;
 struct dy_rhalfedge;
@@ -22,7 +31,7 @@ struct dy_bplane;
 struct dy_rface
 {
 	dy_rhalfedge* first; // First half edge on the face
-	dy_bplane* plane; // The brush plane this face belongs to
+	dy_netdb_objref<dy_bplane> plane;    // The brush plane this face belongs to
 };
 
 struct dy_rmesh
@@ -30,6 +39,7 @@ struct dy_rmesh
 	dy_rface** faces;
 	int face_count;
 	vec3* points;
+	dy_aabb aabb;
 };
 
 

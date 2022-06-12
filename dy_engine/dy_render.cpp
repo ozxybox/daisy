@@ -59,13 +59,13 @@ void dy_render_destroy_ibo(dy_ibo ibo)
 }
 
 // Static vbo & ibo
-dy_vbo dy_render_create_vbo(dy_vtxbuf* buf)
+dy_vbo dy_render_create_vbo(dy_vtxbufview* buf)
 {
 	dy_vbo o = dy_create_vbo_();
 	glBufferData(GL_ARRAY_BUFFER, buf->used * sizeof(dy_vertex), buf->buf, GL_STATIC_DRAW);
 	return o;
 }
-dy_ibo dy_render_create_ibo(dy_idxbuf* buf)
+dy_ibo dy_render_create_ibo(dy_idxbufview* buf)
 {
 	dy_ibo o = dy_create_ibo_();
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * buf->used, buf->buf, GL_STATIC_DRAW);
@@ -73,25 +73,25 @@ dy_ibo dy_render_create_ibo(dy_idxbuf* buf)
 }
 
 // Dynamic vbo & ibo
-dy_vbo dy_render_create_vbo_dynamic(dy_vtxbuf* buf)
+dy_vbo dy_render_create_vbo_dynamic()
 {
 	dy_vbo o = dy_create_vbo_();
-	glBufferData(GL_ARRAY_BUFFER, buf->used * sizeof(dy_vertex), buf->buf, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 0, 0, GL_DYNAMIC_DRAW);
 	return o;
 }
-dy_ibo dy_render_create_ibo_dynamic(dy_idxbuf* buf)
+dy_ibo dy_render_create_ibo_dynamic()
 {
 	dy_ibo o = dy_create_ibo_();
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * buf->used, buf->buf, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, 0, GL_DYNAMIC_DRAW);
 	return o;
 }
-void dy_render_fill_vbo_dynamic(dy_vbo vbo, dy_vtxbuf* buf)
+void dy_render_fill_vbo_dynamic(dy_vbo vbo, dy_vtxbufview* buf)
 {
 	glBindVertexArray(vbo.vao);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo.vbo);
 	glBufferData(GL_ARRAY_BUFFER, buf->used * sizeof(dy_vertex), buf->buf, GL_DYNAMIC_DRAW);
 }
-void dy_render_fill_ibo_dynamic(dy_ibo ibo, dy_idxbuf* buf)
+void dy_render_fill_ibo_dynamic(dy_ibo ibo, dy_idxbufview* buf)
 {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * buf->used, buf->buf, GL_DYNAMIC_DRAW);
@@ -158,4 +158,24 @@ void dy_render_draw_mesh(dy_vbo vbo, dy_ibo ibo, unsigned int start, unsigned in
 	assert(glGetError() == 0);
 
 
+}
+
+void dy_render_draw_mesh(dy_mesh* mesh)
+{
+	dy_render_draw_mesh(mesh->vbo, mesh->ibo, 0, mesh->elements);
+}
+
+
+void dy_render_draw_dynamic(dy_vtxbufview* vb, dy_idxbufview* ib)
+{
+	// FIXME: We need to clean up this resource on shutdown!!!!!!
+	static dy_vbo s_dynvb = dy_render_create_vbo_dynamic();
+	static dy_ibo s_dynib = dy_render_create_ibo_dynamic();
+	static dy_mesh s_dynmesh = { s_dynvb, s_dynib, 0 };
+
+	dy_render_fill_vbo_dynamic(s_dynvb, vb);
+	dy_render_fill_ibo_dynamic(s_dynib, ib);
+	s_dynmesh.elements = ib->used;
+
+	dy_render_draw_mesh(&s_dynmesh);
 }

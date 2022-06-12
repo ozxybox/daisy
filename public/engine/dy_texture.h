@@ -26,7 +26,7 @@ typedef void dy_texture;
 // Pixels can be NULL for a blank texture
 dy_texture* dy_texture_create(enum DY_TEXTURE_FORMAT format, unsigned char* pixels, unsigned int width, unsigned int height);
 void dy_texture_destroy(dy_texture* texture);
-void dy_texture_bind(dy_texture* texture);
+void dy_texture_bind(dy_texture* texture, int unit = 0);
 void dy_texture_get_dimensions(dy_texture* texture, unsigned int* width, unsigned int* height);
 
 

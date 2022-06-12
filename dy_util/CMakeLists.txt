@@ -9,6 +9,10 @@ set( SOURCES
 	dy_math.cpp
 
 	${DY_PUBLIC}/dy_ustack.h
+
+
+	${DY_PUBLIC}/dy_snooze.h
+	dy_snooze.cpp
 )
 
 add_library( dy_util ${SOURCES} )

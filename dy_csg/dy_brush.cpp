@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
+#include <float.h>
 
 // Rules of the brush
 //   1) This isn't a hull. We're finding the smallest shape that fits within these planes
@@ -33,7 +34,7 @@ struct dy_bface
 {
 	int valid_edges;
 	dy_ustack<dy_bedge> edges;
-	dy_bplane* plane;
+	dy_netdb_objref<dy_bplane> plane;
 	dy_rface* face;
 };
 
@@ -43,7 +44,7 @@ bool dy_inside(dy_bsolid* solid, dy_rface* face)
 	int inside = 0;
 	int outside = 0;
 
-	for (int i = 0; i < solid->plane_count; i++)
+	for (int i = 0; i < solid.count; i++)
 	{
 		dy_bplane* plane = &solid->planes[i];
 
@@ -143,7 +144,7 @@ dy_bedge* dy_bsolid_mesh_push_plane_edge_(dy_ustack<dy_bedge>& elist, int pair_p
 	}
 	return elist.push({ 0,pair_plane,{pidx,0},1,0 });
 }
-int dy_bsolid_mesh_submit_point_(dy_ustack<vec3, 8>& pointlist, vec3& p)
+int dy_bsolid_mesh_submit_point_(dy_ustack<vec3>& pointlist, vec3& p)
 {
 	// TODO: Tune the epsilon for this!
 	const float epsilon = 0.005f;
@@ -166,27 +167,27 @@ int dy_bsolid_mesh_submit_point_(dy_ustack<vec3, 8>& pointlist, vec3& p)
 	
 	assert(i == pointlist.count);
 	// At this point i is pointlist.count;
-	pointlist.push(&p);
+	pointlist.push(p);
 	return i;
 
 }
 
 // Convert a Brush Solid into a halfedge mesh
-dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
+dy_rmesh dy_bsolid_mesh(dy_array<dy_netdb_objref<dy_bplane>> solid)
 {
 	// We need at least four planes to make anything 
-	if (solid->plane_count < 4)
+	if (solid.count < 4)
 		return {0,0,0};
 
 
-	dy_ustack<vec3, 8> pointlist;
+	dy_ustack<vec3> pointlist;
 
 	// Hold and array of what planes have been okay'd or are invalid
-	bool* plane_valid = (bool*)malloc(sizeof(bool) * solid->plane_count);
-	memset(plane_valid, 1, sizeof(bool) * solid->plane_count);
+	bool* plane_valid = (bool*)malloc(sizeof(bool) * solid.count);
+	memset(plane_valid, 1, sizeof(bool) * solid.count);
 
 	// First, see if there's any full planes we can discard
-	int cplane = solid->plane_count;
+	int cplane = solid.count;
 	dy_ustack<dy_bface> bfaces;
 	for (int i = 0; i < cplane; i++)
 	{
@@ -194,11 +195,11 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 		if (plane_valid[i] == false)
 			continue;
 
-		dy_bplane* plane = &solid->planes[i];
+		dy_bplane* plane = solid.data[i];
 		
 		for (int k = i + 1; k < cplane; k++)
 		{
-			dy_bplane* otherplane = &solid->planes[k];
+			dy_bplane* otherplane = solid.data[k];
 
 			float d = vec3::dot(plane->norm, otherplane->norm);
 			if (dy_near(d, 1.0f))
@@ -222,10 +223,14 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 	}
 
 	// FIXME: use an array instead of a ustack for bfaces!
-	for (int i = 0; i < solid->plane_count; i++)
+	for (int i = 0; i < solid.count; i++)
 	{
 		if (plane_valid[i])
-			bfaces.push({ 0,{},&solid->planes[i],0 });
+		{
+			dy_bface* bf = bfaces.push({ 0,{},solid.data[i],0 });
+			// FIXME: AWFUL!!
+			bf->edges.back = &bf->edges.front;
+		}
 	}
 	free(plane_valid);
 	int face_count = bfaces.count;
@@ -306,6 +311,7 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 				// Out of the solid. Skip it
 				if (!in)
 					continue;
+
 
 				// This one's clean! Push it
 				int pidx = dy_bsolid_mesh_submit_point_(pointlist, p);
@@ -408,7 +414,6 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 	}
 
 	vec3* points = pointlist.packed();
-
 	
 	// Assemble faces
 	for(dy_bface* brush_face : bfaces)
@@ -418,11 +423,10 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 			continue;
 		
 		dy_ustack<dy_bedge>& elist = brush_face->edges;
-		dy_bplane* plane = brush_face->plane;
 
 		// Create a new HE face for this brush face
 		dy_rface* face = (dy_rface*)malloc(sizeof(dy_rface));
-		face->plane = plane;
+		face->plane = brush_face->plane;
 		brush_face->face = face;
 
 		// Prep the first edge
@@ -514,7 +518,7 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 			if (lastpoint == -1)
 			{
 				// For our first edge, we need to establish the winding order
-				float n = vec3::dot(vec3::cross(*conp - *ep, *oep - *conp), plane->norm);
+				float n = vec3::dot(vec3::cross(*conp - *ep, *oep - *conp), brush_face->plane->norm);
 				if (n <= 0)
 				{
 					// Either not the same direction or 0 area!
@@ -603,12 +607,35 @@ dy_rmesh dy_bsolid_mesh(dy_bsolid* solid)
 		valid_faces++;
 	}
 
+
+	// Create the AABB
+	dy_aabb aabb = { {FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX} };
+	for (int i = 0; i < pointlist.count; i++)
+	{
+		vec3* p = points + i;
+
+		if (p->x < aabb.mins.x)
+			aabb.mins.x = p->x;
+		if (p->y < aabb.mins.y)
+			aabb.mins.y = p->y;
+		if (p->z < aabb.mins.z)
+			aabb.mins.z = p->z;
+
+		if (p->x > aabb.maxs.x)
+			aabb.maxs.x = p->x;
+		if (p->y > aabb.maxs.y)
+			aabb.maxs.y = p->y;
+		if (p->z > aabb.maxs.z)
+			aabb.maxs.z = p->z;
+	}
+
 	BRUSH_LOG("woo hoo!");
 
 	dy_rmesh mesh;
 	mesh.points = points;
 	mesh.faces = (dy_rface**)malloc(sizeof(dy_rface*) * valid_faces);
 	mesh.face_count = valid_faces;
+	mesh.aabb = aabb;
 
 	int faceidx = 0;
 	for (dy_bface* face : bfaces)

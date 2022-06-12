@@ -67,16 +67,6 @@ void dy_vtxbuf::reset()
     used = 0;
 }
 
-/*
-void dy_vtxbuf::view(dy_vertex* arr, unsigned int size, dy_vtxbuf* out)
-{
-    unsigned int count = size / sizeof(dy_vertex);
-    out->buf = arr;
-    out->capacity = count;
-    out->used = count;
-}
-*/
-
 
 
 // Index buffer //
@@ -147,16 +137,6 @@ void dy_idxbuf::reset()
     used = 0;
 }
 
-/*
-void dy_idxbuf::view(unsigned short* arr, unsigned int size, dy_idxbuf* out)
-{
-    unsigned int count = size / sizeof(unsigned short);
-    out->buf = arr;
-    out->capacity = count;
-    out->used = count;
-}
-
-*/
 
 
 // Mesh assembling //

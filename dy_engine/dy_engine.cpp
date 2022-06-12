@@ -19,7 +19,6 @@ static const char* s_window_vertexshader =
 "}";
 static const char* s_window_fragmentshader =
 "#version 330 core\n"
-"precision lowp float;"
 "in vec2 v_uv;"
 "out vec4 o_fragColor;"
 "uniform sampler2D u_tex;"
@@ -47,11 +46,28 @@ static dy_window_data* s_window = 0;
 static dy_shader* s_windowshader;
 
 
+// Return the time of the current frame
+static float s_currentTime = 0.0;
+float dy_curtime()
+{
+	return s_currentTime;
+}
+float dy_engine_update_time()
+{
+	s_currentTime = glfwGetTime();
+	return s_currentTime;
+}
+float dy_realtime()
+{
+	return glfwGetTime();
+}
+
 int dy_engine_init()
 {
 	if (!glfwInit())
 		return 1;
 
+	
 	
 	// Create an invisible window
 	// Attach a context
@@ -67,6 +83,7 @@ int dy_engine_init()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	//glfwWindowHint(GLFW_REFRESH_RATE, 30.0);
 
 	s_hidden_window = glfwCreateWindow(window_width, window_height, "", NULL, NULL);
 	glfwMakeContextCurrent(s_hidden_window);
@@ -76,6 +93,10 @@ int dy_engine_init()
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 		return 1;
 	
+	// Hidden window doesn't need to be limited.
+	// VSYNC ON
+	//	glfwSwapInterval(1);
+
 	// Create the offscreen framebuffer for rendering window content
 	dy_texture* color = dy_texture_create(DY_TEXTURE_FORMAT_RGB32F, 0, 2048, 2048);
 	s_offscreen_framebuffer = dy_framebuffer_create(color, 1);
@@ -113,15 +134,24 @@ void dy_engine_event_pump()
 
 void dy_engine_frame_begin()
 {
+
 	// Switch to our rendering window so we can draw our scene
 	glfwMakeContextCurrent(s_hidden_window);
 
 	// Bind the offscreen framebuffer
 	dy_texture* fbtex = dy_framebuffer_color(s_offscreen_framebuffer);
 	dy_framebuffer_bind(s_offscreen_framebuffer);
+
+#if 0
 	unsigned int fbtexwidth, fbtexheight;
 	dy_texture_get_dimensions(fbtex, &fbtexwidth, &fbtexheight);
 	dy_render_setviewport(0, 0, fbtexwidth, fbtexheight);
+#else
+	// FIXME: AA
+	int width = 0, height = 0;
+	glfwGetWindowSize(s_window->window, &width, &height);
+	dy_render_setviewport(0, 0, width, height);
+#endif
 
 }
 
@@ -138,18 +168,23 @@ void dy_engine_frame_end()
 	// Switch back to our selected window
 	glfwMakeContextCurrent(s_window->window);
 
+	dy_texture* color = dy_framebuffer_color(s_offscreen_framebuffer);
+
+	unsigned int w = 0, h = 0;
+	dy_texture_get_dimensions(color, &w, &h);
+
 	// Bind the shader first!
 	dy_shader_bind(s_windowshader);
 
 	// Setup the camera to fullscreen the FBO
 	dy_render_setviewport(0, 0, width, height);
 	mat4 proj;
-	dy_ortho4x4(&proj, 0, 1, 1, 0, -10, 10);
+	dy_ortho4x4(&proj, 0, width / (float)w, height / (float)h, 0, -10, 10);
 	dy_shader_set(DY_SHADERPARAM_PROJECTION, &proj);
 
 	
 	// Draw the screen quad with the fbo bound
-	dy_texture_bind(dy_framebuffer_color(s_offscreen_framebuffer));
+	dy_texture_bind(color);
 	dy_render_draw_mesh(s_window->screenvbo, s_window->screenibo, 0, 6);
 
 	// Push the frame to the selected window
@@ -157,6 +192,7 @@ void dy_engine_frame_end()
 
 	// Return to our hidden window
 	glfwMakeContextCurrent(s_hidden_window);
+
 }
 
 
@@ -171,6 +207,9 @@ dy_window* dy_engine_new_window()
 	
 	// The window needs to own its resources
 	glfwMakeContextCurrent(wnd);
+
+	// VSYNC ON
+	glfwSwapInterval(2);
 	
 	// Create a screen object to render our framebuffer to 
 	// We're ignoring the vertex buffer. We can specify the screen with the ibo alone
@@ -222,6 +261,11 @@ int dy_engine_key_down(int key)
 {
 	return glfwGetKey(s_window->window, key) == GLFW_PRESS;
 }
+int dy_engine_mouse_down(int button)
+{
+	return glfwGetMouseButton(s_window->window, button) == GLFW_PRESS;
+}
+
 void dy_engine_mouse_pos(double* mx, double* my)
 {
 	glfwGetCursorPos(s_window->window, mx, my);

@@ -13,9 +13,18 @@ typedef struct dy_vertex
 
 
 
-// Vertex buffer //
 
-class dy_vtxbuf
+// Basic container for vertices //
+class dy_vtxbufview
+{
+public:
+    dy_vertex* buf;
+    unsigned int used;
+};
+
+
+// Vertex buffer //
+class dy_vtxbuf : public dy_vtxbufview
 {
 public:
 
@@ -34,20 +43,24 @@ public:
     // Resets the head back to start. Next push will be at element zero
     void reset();
 
-
-
-    dy_vertex* buf;
     unsigned int capacity;
-    unsigned int used;
+
 };
 
 
 
 
 
-// Index buffer //
+// Basic container for indices //
+class dy_idxbufview
+{
+public:
+    unsigned short* buf;
+    unsigned int used;
+};
 
-class dy_idxbuf
+// Index buffer //
+class dy_idxbuf : public dy_idxbufview
 {
 public:
 
@@ -70,9 +83,7 @@ public:
     void push_convexpoly(unsigned short start, unsigned short count);
 
 
-    unsigned short* buf;
     unsigned int capacity;
-    unsigned int used;
 
 
     // Allocates and fills an index buffer based on a vertex buffer and a pattern
@@ -82,7 +93,6 @@ public:
 };
 
 
-//void dy_idxbuf_view(unsigned short* arr, unsigned int size, dy_idxbuf* out);
 
 
 

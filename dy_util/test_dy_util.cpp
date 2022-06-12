@@ -19,7 +19,7 @@ int test_dy_ustack()
 			int max = k * z;
 
 			for (int i = 0; i < max; i++)
-				stack.push(&i);
+				stack.push(i);
 
 			ASSERT(stack.count == max);
 			ASSERT(*stack.first() == 0);
@@ -40,8 +40,8 @@ int test_dy_ustack()
 			for (int i = 0; i < max; i++)
 				stack.pop();
 			ASSERT(stack.count == 0);
-			ASSERT(stack.front == 0);
-			ASSERT(stack.back == 0);
+			ASSERT(stack.front.next == 0);
+			ASSERT(stack.back == &stack.front);
 		}
 	}
 
@@ -77,9 +77,13 @@ bool solve_cramer(mat3 const& A, vec3 const& b, vec3* out)
 int test_dy_mat3_solve()
 {
 
+	FILE* f = fopen("mat3_solve.csv", "w");
+
+
 	srand((unsigned)time(0));
 
-	int total = 51200;
+//	int total = 51200;
+	int total = 800000;
 	
 	int no_solve = 0;
 	int equal = 0;
@@ -102,6 +106,9 @@ int test_dy_mat3_solve()
 
 	for (int i = 0; i < total; i++)
 	{
+		if (i % 1000 == 0)
+			putchar('.');
+
 		mat3 m;
 		vec3* mf = reinterpret_cast<vec3*>(&m);
 		vec3 ans;
@@ -160,16 +167,23 @@ int test_dy_mat3_solve()
 			};
 		}
 
+		if (ans.mag() < 0.001)
+		{
+			puts("Dropped 0 mag vec");
+			continue;
+		}
+
 		vec3 xans = ans;
 		vec3 yans = ans;
 
 		// This second for loop is for investigating drift
 		// TODO: Use this for metrics
-		for (int k = 0; k < 900; k++)
+		for (int k = 0; k < 1; k++)
 		{
 			vec3 xb = m * xans;
 			vec3 yb = m * yans;
 
+			//__rdtsc()
 			vec3 x;
 			bool X = mat3::solve(m, xb, &x);
 
@@ -211,6 +225,8 @@ int test_dy_mat3_solve()
 				ymedian += ystavg;
 
 				valid++;
+			
+				fprintf(f, "%f,%f\n", xerr, yerr);
 			}
 
 			if (X && !Y)
@@ -224,6 +240,9 @@ int test_dy_mat3_solve()
 			yans = y;
 		}
 	}
+
+	fclose(f);
+
 	float xavgerr = xtotalerr / valid;
 	float yavgerr = ytotalerr / valid;
 
@@ -249,6 +268,38 @@ int test_dy_mat3_solve()
 	return 0;
 }
 
+
+int test_dy_mat3_mul()
+{
+	mat4 m = mat4::identity();
+
+	int s = 777;
+	float a = (2.0 * DY_PI) / (float)s;
+	for (int j = 0; j < 90000; j++)
+	{
+		for (int i = 0; i < s; i++)
+		{
+			m = mat4::xrotation(a) * m;
+		}
+	}
+
+
+	mat4 n = mat4::identity();
+
+	float* pm = reinterpret_cast<float*>(&m);
+	float* pn = reinterpret_cast<float*>(&n);
+
+	float err = 0;
+	for (int i = 0; i < 16; i++)
+	{
+		err += (pn[i] - pm[i]);// / pn[i];
+	}
+
+	printf("Error: %f\n", err);
+	ASSERT(err < 2.0);
+	return 0;
+}
+
 struct dy_test
 {
 	const char* name;
@@ -259,6 +310,7 @@ struct dy_test
 dy_test dy_tests[] = {
 	{"dy_ustack", test_dy_ustack},
 	{"mat3::solve", test_dy_mat3_solve},
+	{"mat3::mul", test_dy_mat3_mul},
 };
 const int dy_test_count = sizeof(dy_tests) / sizeof(dy_test);
 

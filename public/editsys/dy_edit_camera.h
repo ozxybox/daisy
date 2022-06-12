@@ -1,6 +1,4 @@
 #pragma once
-
-
 #include "dy_math.h"
 
 struct dy_camera
@@ -9,5 +7,3 @@ struct dy_camera
 	float pitch;
 	float yaw;
 };
-
-

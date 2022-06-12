@@ -54,9 +54,16 @@ typedef struct dy_parameter
 // This should be the same as DY_SHADERPARAM
 #define PARAMETER(type, name) {DY_UNIFORM_ ## type, "u_" #name, 0},
 static dy_parameter dy_shader_params[DY_SHADERPARAM_COUNT] = {
-    PARAMETER(MAT4, model)
-    PARAMETER(MAT4, view)
-    PARAMETER(MAT4, projection)
+    PARAMETER(FLOAT2, resolution)
+    PARAMETER(MAT4,   model)
+    PARAMETER(MAT4,   view)
+    PARAMETER(MAT4,   projection)
+    PARAMETER(MAT4,   mvp)
+    PARAMETER(FLOAT4, color)
+    PARAMETER(FLOAT4, texoff)
+
+    PARAMETER(INT1,   texcolor)
+    PARAMETER(INT1,   texmask)
 };
 #undef PARAMETER
 
@@ -219,3 +226,14 @@ void dy_shader_set(int parameter, void* data)
 }
 
  
+
+/*
+void dy_uniformbuf_create()
+{
+    GLuint ubo = 0;
+    glGenBuffers(1, &ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(shader_data), &shader_data, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+*/

@@ -77,10 +77,11 @@ dy_texture* dy_texture_create(enum DY_TEXTURE_FORMAT format, unsigned char* pixe
     return (dy_texture*)data;
 }
 
-void dy_texture_bind(dy_texture* texture)
+void dy_texture_bind(dy_texture* texture, int unit)
 {
     dy_texture_data* data = (dy_texture_data*)texture;
 
+    glActiveTexture(GL_TEXTURE0 + unit);
     glBindTexture(GL_TEXTURE_2D, data->id);
 }
 
